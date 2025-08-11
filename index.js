@@ -1,55 +1,50 @@
+// server.js
 import express from "express";
 import bodyParser from "body-parser";
 import CryptoJS from "crypto-js";
-import cors from "cors";
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.urlencoded({ extended: true })); // Gateway sends form data
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true })); // for form data
+app.use(bodyParser.json()); // for JSON
 
-// Replace with your AuthKey
-const AUTH_KEY = "Qv0rg4oN8cS9sm6PS3rr6fu7MN2FB0Oo";
+// Your AES key and IV from the payment API team
+const AES_KEY = "Qv0rg4oN8cS9sm6PS3rr6fu7MN2FB0Oo"; // e.g., "12345678901234567890123456789012"
+const AES_IV = "Qv0rg4oN8cS9sm6P";   // e.g., "1234567890123456"
 
-// AES Decrypt function (reverse of your React encryption)
-function decryptRespData(encData) {
-  const key = CryptoJS.enc.Utf8.parse(AUTH_KEY.padEnd(32, "0"));
-  const iv = CryptoJS.enc.Utf8.parse(AUTH_KEY.substring(0, 16));
-
-  const decrypted = CryptoJS.AES.decrypt(encData, key, {
-    iv,
-    mode: CryptoJS.mode.CBC,
-    padding: CryptoJS.pad.Pkcs7,
-  });
-
-  return JSON.parse(decrypted.toString(CryptoJS.enc.Utf8));
-}
-
-// Callback URL from Payment Gateway
+// Callback endpoint
 app.post("/transaction", (req, res) => {
   try {
-    const { respData } = req.body; // Payment gateway sends respData here
+    const encryptedRespData = req.body.respdata; // Payment gateway sends this
 
-    if (!respData) {
-      return res.status(400).send("Missing respData");
+    if (!encryptedRespData) {
+      return res.status(400).json({ error: "Missing respdata" });
     }
 
-    // Decrypt the response
-    const paymentDetails = decryptRespData(respData);
-    console.log("✅ Decrypted Payment Data:", paymentDetails);
-
-    // TODO: Save paymentDetails to your database if needed
-
-    // Redirect user to frontend page with only safe info
-    res.redirect(
-      `https://nonseampay.vercel.app/transaction?AggRefNo=${paymentDetails.AggRefNo}&status=${paymentDetails.Status}`
+    // Decrypt
+    const decryptedBytes = CryptoJS.AES.decrypt(
+      encryptedRespData,
+      CryptoJS.enc.Utf8.parse(AES_KEY),
+      {
+        iv: CryptoJS.enc.Utf8.parse(AES_IV),
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+      }
     );
+
+    const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
+
+    console.log("✅ Decrypted payment data:", decryptedText);
+
+    // Send response to gateway
+    res.status(200).send("OK");
+
+    // Optionally store in DB...
   } catch (error) {
-    console.error("❌ Error decrypting payment data:", error);
-    res.status(500).send("Error processing payment response");
+    console.error("❌ Error decrypting respdata:", error);
+    res.status(500).send("Server error");
   }
 });
 
-app.listen(3000, () => {
-  console.log("🚀 Server running on http://localhost:3000");
+app.listen(5000, () => {
+  console.log("🚀 Server running on port 5000");
 });
