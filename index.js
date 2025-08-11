@@ -1,50 +1,35 @@
-// server.js
+// server/index.js
 import express from "express";
 import bodyParser from "body-parser";
 import CryptoJS from "crypto-js";
 
 const app = express();
-app.use(bodyParser.urlencoded({ extended: true })); // for form data
-app.use(bodyParser.json()); // for JSON
+app.use(bodyParser.urlencoded({ extended: true })); // Payment gateway often sends form data
+app.use(bodyParser.json());
 
-// Your AES key and IV from the payment API team
-const AES_KEY = "Qv0rg4oN8cS9sm6PS3rr6fu7MN2FB0Oo"; // e.g., "12345678901234567890123456789012"
-const AES_IV = "Qv0rg4oN8cS9sm6P";   // e.g., "1234567890123456"
-
-// Callback endpoint
+// Callback route
 app.post("/transaction", (req, res) => {
   try {
-    const encryptedRespData = req.body.respdata; // Payment gateway sends this
+    console.log("Payment Gateway Callback Data:", req.body);
 
-    if (!encryptedRespData) {
-      return res.status(400).json({ error: "Missing respdata" });
-    }
+    // Extract encrypted respData
+    const encryptedRespData = req.body.respData;
 
-    // Decrypt
-    const decryptedBytes = CryptoJS.AES.decrypt(
-      encryptedRespData,
-      CryptoJS.enc.Utf8.parse(AES_KEY),
-      {
-        iv: CryptoJS.enc.Utf8.parse(AES_IV),
-        mode: CryptoJS.mode.CBC,
-        padding: CryptoJS.pad.Pkcs7
-      }
-    );
+    // Decrypt (AES-256-CBC example; adjust to your key/iv setup)
+    const secretKey = "YOUR_SECRET_KEY"; // must match gateway config
+    const bytes = CryptoJS.AES.decrypt(encryptedRespData, secretKey);
+    const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
 
-    const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
+    console.log("Decrypted Payment Data:", decryptedData);
 
-    console.log("✅ Decrypted payment data:", decryptedText);
-
-    // Send response to gateway
-    res.status(200).send("OK");
-
-    // Optionally store in DB...
+    // Send a response back to payment gateway
+    res.status(200).send("Callback received successfully");
   } catch (error) {
-    console.error("❌ Error decrypting respdata:", error);
-    res.status(500).send("Server error");
+    console.error("Error handling callback:", error);
+    res.status(500).send("Error processing callback");
   }
 });
 
 app.listen(5000, () => {
-  console.log("🚀 Server running on port 5000");
+  console.log("Server running on port 5000");
 });
