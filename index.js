@@ -8,7 +8,7 @@ app.use(bodyParser.urlencoded({ extended: true })); // Payment gateway often sen
 app.use(bodyParser.json());
 
 // Callback route
-app.post("/transaction", (req, res) => {
+app.all("/transaction", (req, res) => {
   try {
     console.log("Payment Gateway Callback Data:", req.body);
 
@@ -16,7 +16,7 @@ app.post("/transaction", (req, res) => {
     const encryptedRespData = req.body.respData;
 
     // Decrypt (AES-256-CBC example; adjust to your key/iv setup)
-    const secretKey = "YOUR_SECRET_KEY"; // must match gateway config
+    const secretKey = "Qv0rg4oN8cS9sm6PS3rr6fu7MN2FB0Oo"; // must match gateway config
     const bytes = CryptoJS.AES.decrypt(encryptedRespData, secretKey);
     const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
 
